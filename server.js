@@ -14,8 +14,9 @@ const ipBanList = new Set(); // BANされたIPを保存する場所
 // ★ 特権管理者になるためのシークレットパスワード（英語と数字が安全です）
 const SUPER_ADMIN_SECRET = "dayo003";
 
+
 // ==========================================
-// ログイン・新規登録用のAPI（修正版）
+// ログイン・新規登録用のAPI（修正・確定版）
 // ==========================================
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
@@ -35,7 +36,7 @@ app.post('/api/register', (req, res) => {
 
     users[actualUsername] = { password, role };
     
-    // 【修正】画面側で非表示制御ができるように、登録成功時もroleを返す
+    // 画面側で非表示制御ができるように、登録成功時もroleと正しいユーザー名を返す
     res.json({ success: true, username: actualUsername, role: role });
 });
 
@@ -48,6 +49,14 @@ app.post('/api/login', (req, res) => {
 
     let currentRole = user.role;
     
+    // 一般ユーザーがチェックを入れた場合のみ admin（管理者）にする
+    if (isAdminRequested && currentRole === 'user') {
+        currentRole = 'admin';
+    }
+
+    res.json({ success: true, username: username, role: currentRole });
+});
+
     // 特権管理者がデモ用adminに上書きされないようにガードしつつ、
     // 一般ユーザーがチェックを入れた場合のみ admin（管理者）にする
     if (isAdminRequested && currentRole === 'user') {
