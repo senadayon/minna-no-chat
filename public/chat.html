@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>みんなのチャット</title>
     <script src="/socket.io/socket.io.js"></script>
-    <!-- 【追加】通話機能に必要なPeerJSライブラリ -->
-    <script src="https://unpkg.com"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
         body { background-color: #1a1a1a; color: #e0e0e0; display: flex; flex-direction: column; min-height: 100vh; padding: 20px; box-sizing: border-box; }
         
-        /* メッセージ表示エリア */
+        /* メッセージ表示エリア（しっかり高さを確保） */
         .chat-container { height: 350px; background: #262626; border-radius: 8px; padding: 20px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #333; }
         .message { background: #333; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #3498db; position: relative; }
         .message .username { font-weight: bold; color: #3498db; margin-bottom: 5px; font-size: 14px; }
@@ -58,54 +56,49 @@
         
         <div class="button-row">
             <div class="left-buttons">
-                <!-- 【追加】通話開始・切断ボタン -->
-                <button id="call-btn" class="btn btn-cyan" onclick="startCall()">📞 通話を開始</button>
-                <button id="hangup-btn" class="btn btn-red" onclick="hangUp()" style="display: none;">❌ 通話終了</button>
+
             </div>
             <button class="btn btn-red" onclick="logout()">ログアウト</button>
         </div>
     </div>
 
-    <!-- 相手の音声を再生するための隠しオーディオタグ -->
-    <audio id="remote-audio" autoplay></audio>
-
     <!-- コマンドエリア -->
-    <div class="command-container" id="admin-panel" style="display: none;">
-        <div class="command-title" id="panel-title">管理者専用の機能</div>
+    <div class="command-container">
+        <div class="command-title">管理者＆特権管理者専用の機能</div>
         <div class="command-grid">
-            <div class="command-card" id="cmd-prm-card">
+            <div class="command-card">
                 <div class="command-name cmd-prm">/prm</div>
                 <div class="command-desc">プライベートメッセージを送る<br><span style="color:#666">例: /prm ユーザー名 内容</span></div>
             </div>
-            <div class="command-card class-admin-only">
+            <div class="command-card">
                 <div class="command-name cmd-admin">/delete <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">全メッセージを削除</div>
             </div>
-            <div class="command-card class-admin-only">
+            <div class="command-card">
                 <div class="command-name cmd-admin">/mute <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">ユーザーを一時的にミュート<br><span style="color:#666">例: /mute ユーザー名 60</span></div>
             </div>
-            <div class="command-card class-admin-only">
+            <div class="command-card">
                 <div class="command-name cmd-admin">/unmute <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">ミュートを解除します<br><span style="color:#666">例: /unmute ユーザー名</span></div>
             </div>
-            <div class="command-card class-admin-only">
+            <div class="command-card">
                 <div class="command-name cmd-admin">/ban <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">ユーザーをチャットから追い出す<br><span style="color:#666">例: /ban ユーザー名</span></div>
             </div>
-            <div class="command-card class-admin-only">
+            <div class="command-card">
                 <div class="command-name cmd-admin">/unban <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">BANを解除します<br><span style="color:#666">例: /unban ユーザー名</span></div>
             </div>
-            <div class="command-card class-super-only">
+            <div class="command-card">
                 <div class="command-name cmd-admin" style="color:#be7ffb">/ipban <span class="badge badge-super">特権管理者専用</span></div>
                 <div class="command-desc">ユーザー名またはIPアドレスでBANする<br><span style="color:#666">例: /ipban ユーザー名</span></div>
             </div>
-            <div class="command-card class-super-only">
+            <div class="command-card">
                 <div class="command-name cmd-admin" style="color:#be7ffb">/ipunban <span class="badge badge-super">特権管理者専用</span></div>
                 <div class="command-desc">IPバンを解除する<br><span style="color:#666">例: /ipunban IPアドレス</span></div>
             </div>
-            <div class="command-card class-super-only">
+            <div class="command-card">
                 <div class="command-name cmd-admin" style="color:#be7ffb">/ipbanlist <span class="badge badge-super">特権管理者専用</span></div>
                 <div class="command-desc">IPバンリストを表示</div>
             </div>
@@ -121,85 +114,55 @@
         window.location.href = '/index.html';
     }
 
-    // --- 権限によるメニュー非表示ロジック ---
-    const adminPanel = document.getElementById('admin-panel');
-    const panelTitle = document.getElementById('panel-title');
-    const adminCards = document.querySelectorAll('.class-admin-only');
-    const superCards = document.querySelectorAll('.class-super-only');
-
-    if (role === 'user') {
-        adminPanel.style.display = 'none';
-    } else if (role === 'admin') {
-        adminPanel.style.display = 'block';
-        panelTitle.innerText = '管理者専用の機能';
-        superCards.forEach(card => card.style.display = 'none');
-    } else if (role === 'super_admin') {
-        adminPanel.style.display = 'block';
-        panelTitle.innerText = '特権管理者専用の機能';
-    }
-
-    // --- 【追加】通話用オブジェクトの初期化変数 ---
-    let myPeer = null;
-    let currentCall = null;
-    let myStream = null;
-
-    // 接続時に通話ネットワーク(PeerJS)へ登録
-    socket.on('connect', () => {
-        // ユーザー名が重複しない前提で、そのまま通話用IDとして使用
-        myPeer = new Peer(username);
-
-        // 誰かから着信があったときの処理
-        myPeer.on('call', async (call) => {
-            if (confirm(`${call.peer} から音声通話の着信があります。応答しますか？`)) {
-                try {
-                    // マイクを起動して応答
-                    myStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    call.answer(myStream);
-                    setupCallEvents(call);
-                } catch (err) {
-                    alert("マイクの起動に失敗しました。");
-                }
-            } else {
-                call.close();
-            }
-        });
-    });
-
     socket.emit('join', { username, role });
 
-    // --- 【追加】通話を発信する関数 ---
-    async function startCall() {
-        const targetUser = prompt("通話したい相手のユーザー名を入力してください:");
-        if (!targetUser || targetUser.trim() === "") return;
+    function updateCount() {
+        const len = document.getElementById('msg-input').value.length;
+        document.getElementById('char-counter').innerText = `${len}/200`;
+    }
 
-        try {
-            // 自分のマイク音声をキャプチャ
-            myStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-            
-            // 指定したユーザー名（相手のID）へ発信
-            const call = myPeer.call(targetUser.trim(), myStream);
-            setupCallEvents(call);
-        } catch (err) {
-            alert("マイクの接続、または相手への発信に失敗しました。");
-            console.error(err);
+    function sendMessage() {
+        const input = document.getElementById('msg-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        socket.emit('chat_message', text);
+        input.value = '';
+        updateCount();
+    }
+
+    document.getElementById('msg-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
         }
+    });
+
+    socket.on('message', (msg) => {
+        const box = document.getElementById('chat-box');
+        const now = new Date();
+        const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+        
+        box.innerHTML += `
+            <div class="message">
+                <div class="username">${msg.username}</div>
+                <div class="text">${msg.text}</div>
+                <div class="time">${timeStr}</div>
+            </div>
+        `;
+        box.scrollTop = box.scrollHeight;
+    });
+
+    socket.on('system_message', (text) => {
+        const box = document.getElementById('chat-box');
+        box.innerHTML += `<div class="system-msg">${text}</div>`;
+        box.scrollTop = box.scrollHeight;
+    });
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = '/index.html';
     }
-
-    // --- 【追加】通話イベント（音声の受け取りとボタン制御） ---
-    function setupCallEvents(call) {
-        currentCall = call;
-        document.getElementById('call-btn').style.display = 'none';
-        document.getElementById('hangup-btn').style.display = 'inline-block';
-
-        // 相手の音声が届いたらaudioタグで再生
-        call.on('stream', (remoteStream) => {
-            const audioTag = document.getElementById('remote-audio');
-            audioTag.srcObject = remoteStream;
-        });
-
-        // 通話が切れた時の処理
-        call.on('close', () => {
-            resetCallUI();
-        });
-    }
-
+</script>
+</body>
+</html>
