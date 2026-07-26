@@ -11,43 +11,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 const users = {}; 
 const ipBanList = new Set(); // BANされたIPを保存する場所
 
-// ★ 特権管理者になるためのシークレットパスワード（英語と数字が安全です）
-const SUPER_ADMIN_SECRET = "dayo003";
-
-// ログイン・新規登録用のAPI
-app.post('/api/register', (req, res) => {
-    const { username, password } = req.body;
-    
-    // スペースで区切ってシークレットコードが入力されているかチェック
-    const parts = username.trim().split(' ');
-    const actualUsername = parts[0];
-    const secretCode = parts[1];
-
-    if (users[actualUsername]) return res.json({ success: false, message: '既に存在するユーザー名です' });
-    
-    // パスワードが一致したら特権管理者、それ以外は一般ユーザー
-    let role = 'user';
-    if (secretCode === SUPER_ADMIN_SECRET) {
-        role = 'super_admin';
-    }
-
-    users[actualUsername] = { password, role };
-    res.json({ success: true });
-});
-
-const express = require('express');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-const path = require('path');
-
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
-// データベースの代わり（メモリ保存）
-const users = {}; 
-const ipBanList = new Set(); // BANされたIPを保存する場所
-
 // ★ 特権管理者になるためのシークレットパスワード
 const SUPER_ADMIN_SECRET = "dayo003";
 
