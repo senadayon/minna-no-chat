@@ -70,8 +70,22 @@
         const password = document.getElementById('password').value;
         const isAdmin = document.getElementById('is-admin').checked;
         if (!username || !password) return alert('入力欄を埋めてください');
+        
+        let adminPassword = "";
+
+        // 管理者チェックが入っていたらパスワードポップアップを出す
+        if (!isRegisterMode && isAdmin) {
+            adminPassword = prompt("管理者用パスワードを入力してください：");
+            if (!adminPassword) return; // キャンセルされたら中止
+        }
+
         const url = isRegisterMode ? '/api/register' : '/api/login';
-        const bodyData = isRegisterMode ? { username, password } : { username, password, isAdminRequested: isAdmin };
+        
+        // サーバーに送るデータに adminPassword を追加
+        const bodyData = isRegisterMode 
+            ? { username, password } 
+            : { username, password, isAdminRequested: isAdmin, adminPassword };
+
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -83,7 +97,9 @@
                 alert('登録が完了しました！ログインしてください。');
                 toggleMode(false);
             } else {
-                localStorage.setItem('chat_user', username);
+                // 登録時にスペースでコードを入れた場合の実際の名前を考慮
+                const actualUsername = username.trim().split(' ')[0];
+                localStorage.setItem('chat_user', actualUsername);
                 localStorage.setItem('chat_role', data.role || 'user');
                 window.location.href = '/chat.html';
             }
