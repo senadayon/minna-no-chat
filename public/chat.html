@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>みんなのチャット - ルーム</title>
+    <title>みんなのチャット</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
         body { background-color: #eef2f3; display: flex; flex-direction: column; height: 100vh; }
@@ -53,7 +53,7 @@
             <button class="admin-btn btn-red" onclick="clickCommand('/delete')">🧹 全メッセージ消去</button>
             <button class="admin-btn btn-orange" onclick="clickCommand('/mute')">🔇 ミュートする</button>
             <button class="admin-btn btn-green" onclick="clickCommand('/unmute')">🔊 ミュート解除</button>
-            <button class="admin-btn btn-red" onclick="clickCommand('/ban')">🚪 ユーザー追放(キック)</button>
+            <button class="admin-btn btn-red" onclick="clickCommand('/ban')">🚪 ユーザー追放(BAN)</button>
             <button class="admin-btn btn-red" id="ipban-btn" onclick="clickCommand('/ipban')" style="display:none;">🚫 IP BAN実行</button>
             <button class="admin-btn btn-orange" id="ipbanlist-btn" onclick="clickCommand('/ipbanlist')" style="display:none;">📋 BANリスト確認</button>
         </div>
