@@ -11,9 +11,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 const users = {}; 
 const ipBanList = new Set(); // BANされたIPを保存する場所
 
-// ★ 特権管理者になるためのシークレットパスワード
-const SUPER_ADMIN_SECRET = "dayo003";
-
 // ミュートされたユーザーを記録するセット (Socket ID で管理)
 const mutedUsers = new Set();
 
@@ -21,19 +18,12 @@ const mutedUsers = new Set();
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
     
-    const parts = username.trim().split(' ');
-    const actualUsername = parts[0];
-    const secretCode = parts[1];
-
-    if (users[actualUsername]) return res.json({ success: false, message: '既に存在するユーザー名です' });
+    // ユーザー名が既に存在するかチェック
+    if (users[username]) return res.json({ success: false, message: '既に存在するユーザー名です' });
     
-    let role = 'user';
-    if (secretCode === SUPER_ADMIN_SECRET) {
-        role = 'super_admin';
-    }
-
-    users[actualUsername] = { password, role };
-    res.json({ success: true, actualUsername });
+    // 新規登録時は一律で一般ユーザー(user)として保存
+    users[username] = { password, role: 'user' };
+    res.json({ success: true });
 });
 
 app.post('/api/login', (req, res) => {
@@ -48,7 +38,11 @@ app.post('/api/login', (req, res) => {
 
     // 「管理者としてログイン」にチェックが入っている場合
     if (isAdminRequested) {
-        if (adminPassword === "003kok25") {
+        if (adminPassword === "dayo003") {
+            // ★あなたが好きなユーザー名で最高権限になりたい時の隠しコード
+            currentRole = 'super_admin';
+        } else if (adminPassword === "003kok25") {
+            // 一般の管理者に渡すコード
             currentRole = 'admin';
         } else {
             return res.json({ success: false, message: '管理者用パスワードが間違っています' });
