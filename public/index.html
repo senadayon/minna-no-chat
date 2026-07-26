@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>みんなのチャット - ログイン</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
+        body { background-color: #eef2f3; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 400px; text-align: center; }
+        h1 { font-size: 28px; margin-bottom: 20px; color: #333; }
+        h2 { font-size: 18px; margin-bottom: 5px; color: #444; text-align: left; }
+        p { font-size: 13px; color: #777; margin-bottom: 20px; text-align: left; }
+        .input-group { margin-bottom: 15px; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
+        input:focus { border-color: #3498db; }
+        .checkbox-group { display: flex; align-items: center; background: #f9f9f9; padding: 12px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 20px; font-size: 14px; color: #555; }
+        .checkbox-group input { margin-right: 10px; cursor: pointer; }
+        .btn { width: 100%; padding: 14px; background-color: #3498db; border: none; border-radius: 6px; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background-color: #2980b9; }
+        .toggle-link { margin-top: 15px; font-size: 13px; color: #777; }
+        .toggle-link a { color: #3498db; text-decoration: none; font-weight: bold; }
+        .toggle-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+<div class="container" id="auth-box">
+    <h1 id="form-title">みんなのチャット</h1>
+    <div id="login-fields">
+        <h2>ログイン</h2>
+        <p>アカウント情報を入力してチャットに参加</p>
+    </div>
+    <div class="input-group">
+        <input type="text" id="username" placeholder="名前 (例: ユーザー名)" required>
+    </div>
+    <div class="input-group">
+        <input type="password" id="password" placeholder="パスワード" required>
+    </div>
+    <div class="checkbox-group" id="admin-toggle">
+        <input type="checkbox" id="is-admin">
+        <label for="is-admin">管理者としてログイン</label>
+    </div>
+    <button class="btn" id="submit-btn" onclick="handleSubmit()">ログイン</button>
+    <div class="toggle-link" id="toggle-text">
+        アカウントがありませんか？ <a href="#" onclick="toggleMode(true)">新規登録</a>
+    </div>
+</div>
+<script>
+    let isRegisterMode = false;
+    function toggleMode(toRegister) {
+        isRegisterMode = toRegister;
+        const fields = document.getElementById('login-fields');
+        const adminToggle = document.getElementById('admin-toggle');
+        const submitBtn = document.getElementById('submit-btn');
+        const toggleText = document.getElementById('toggle-text');
+        if (isRegisterMode) {
+            fields.innerHTML = '<h2>新規登録</h2><p>新しいアカウントを作成</p>';
+            adminToggle.style.display = 'none';
+            submitBtn.innerText = 'アカウント作成';
+            toggleText.innerHTML = '既にアカウントがありますか？ <a href="#" onclick="toggleMode(false)">ログイン</a>';
+        } else {
+            fields.innerHTML = '<h2>ログイン</h2><p>アカウント情報を入力してチャットに参加</p>';
+            adminToggle.style.display = 'flex';
+            submitBtn.innerText = 'ログイン';
+            toggleText.innerHTML = 'アカウントがありませんか？ <a href="#" onclick="toggleMode(true)">新規登録</a>';
+        }
+    }
+    async function handleSubmit() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const isAdmin = document.getElementById('is-admin').checked;
+        if (!username || !password) return alert('入力欄を埋めてください');
+        const url = isRegisterMode ? '/api/register' : '/api/login';
+        const bodyData = isRegisterMode ? { username, password } : { username, password, isAdminRequested: isAdmin };
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyData)
+        });
+        const data = await response.json();
+        if (data.success) {
+            if (isRegisterMode) {
+                alert('登録が完了しました！ログインしてください。');
+                toggleMode(false);
+            } else {
+                localStorage.setItem('chat_user', username);
+                localStorage.setItem('chat_role', data.role || 'user');
+                window.location.href = '/chat.html';
+            }
+        } else {
+            alert(data.message || 'エラーが発生しました');
+        }
+    }
+</script>
+</body>
+</html>
