@@ -3,188 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>みんなのチャット</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <title>みんなのチャット - ルーム</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
-        body { background-color: #1a1a1a; color: #e0e0e0; display: flex; flex-direction: column; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+        body { background-color: #eef2f3; display: flex; flex-direction: column; height: 100vh; }
         
-        /* メッセージ表示エリア（しっかり高さを確保） */
-        .chat-container { height: 350px; background: #262626; border-radius: 8px; padding: 20px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #333; }
-        .message { background: #333; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #3498db; position: relative; }
-        .message .username { font-weight: bold; color: #3498db; margin-bottom: 5px; font-size: 14px; }
-        .message .time { font-size: 11px; color: #888; margin-top: 5px; text-align: right; }
-        .system-msg { background: #2d2d2d; padding: 10px; border-radius: 6px; color: #1abc9c; font-size: 13px; margin: 10px 0; border-left: 4px solid #1abc9c; }
+        /* ヘッダー */
+        header { background: #3498db; color: white; padding: 15px 20px; font-size: 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .user-info { font-size: 14px; background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 20px; }
+
+        /* チャットエリア */
+        #messages { flex: 1; padding: 20px; overflow-y: auto; background: #fff; display: flex; flex-direction: column; gap: 10px; }
+        .msg-block { padding: 10px 15px; border-radius: 8px; max-width: 70%; width: fit-content; line-height: 1.4; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .msg-user { background: #e3f2fd; align-self: flex-start; }
+        .msg-system { background: #f5f5f5; color: #757575; font-size: 13px; font-style: italic; align-self: center; text-align: center; box-shadow: none; }
+        .sender-name { font-size: 12px; color: #616161; margin-bottom: 3px; font-weight: bold; }
 
         /* 入力エリア */
-        .input-container { background: #262626; border-radius: 8px; padding: 15px; border: 1px solid #333; margin-bottom: 20px; }
-        textarea { width: 100%; height: 60px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; padding: 10px; font-size: 14px; resize: none; outline: none; }
-        .char-count { text-align: right; font-size: 12px; color: #888; margin-top: 5px; }
-        
-        /* ボタンエリア */
-        .button-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
-        .left-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn { padding: 10px 20px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; font-size: 14px; }
-        .btn-blue { background-color: #3498db; }
-        .btn-orange { background-color: #e67e22; }
-        .btn-cyan { background-color: #1abc9c; }
-        .btn-red { background-color: #e74c3c; }
+        .input-area { background: #fdfdfd; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #e0e0e0; }
+        #msg-input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; outline: none; }
+        #msg-input:focus { border-color: #3498db; }
+        .send-btn { padding: 0 25px; background: #3498db; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; }
+        .send-btn:hover { background: #2980b9; }
 
-        /* コマンドエリア */
-        .command-container { background: #262626; border-radius: 8px; padding: 20px; border: 1px solid #333; }
-        .command-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; }
-        .command-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
-        .command-card { background: #1a1a1a; border: 1px solid #444; border-radius: 8px; padding: 15px; font-size: 13px; }
-        .command-name { font-weight: bold; font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
-        .cmd-prm { color: #a87ffb; }
-        .cmd-admin { color: #ff6b6b; }
-        .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; color: white; font-weight: normal; }
-        .badge-admin { background: #e74c3c; }
-        .badge-super { background: #9b59b6; }
-        .command-desc { color: #aaa; line-height: 1.4; }
+        /* コマンドパネル（特権管理者・管理者用） */
+        #admin-panel { background: #222; color: #fff; padding: 15px; border-top: 1px solid #444; display: none; }
+        .panel-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #bbb; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .admin-btn { padding: 8px 15px; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; color: white; }
+        .btn-red { background: #e74c3c; } .btn-red:hover { background: #c0392b; }
+        .btn-orange { background: #e67e22; } .btn-orange:hover { background: #d35400; }
+        .btn-green { background: #2ecc71; } .btn-green:hover { background: #27ae60; }
     </style>
 </head>
 <body>
 
+    <header>
+        <div>みんなのチャット</div>
+        <div class="user-info" id="display-info">接続中...</div>
+    </header>
+
     <!-- メッセージ表示エリア -->
-    <div class="chat-container" id="chat-box"></div>
+    <div id="messages"></div>
 
-    <!-- 入力エリア -->
-    <div class="input-container">
-        <textarea id="msg-input" maxlength="200" placeholder="メッセージを入力... （ご自由にどうぞ）" oninput="updateCount()"></textarea>
-        <div class="char-count" id="char-counter">0/200</div>
-        
-        <div class="button-row">
-            <div class="left-buttons">
-
-            </div>
-            <button class="btn btn-red" onclick="logout()">ログアウト</button>
+    <!-- 管理者コマンドパネル -->
+    <div id="admin-panel">
+        <div class="panel-title">🛠️ 管理者コントロールパネル</div>
+        <div class="btn-group">
+            <button class="admin-btn btn-red" onclick="clickCommand('/delete')">🧹 全メッセージ消去</button>
+            <button class="admin-btn btn-orange" onclick="clickCommand('/mute')">🔇 ミュートする</button>
+            <button class="admin-btn btn-green" onclick="clickCommand('/unmute')">🔊 ミュート解除</button>
+            <button class="admin-btn btn-red" onclick="clickCommand('/ban')">🚪 ユーザー追放(キック)</button>
+            <button class="admin-btn btn-red" id="ipban-btn" onclick="clickCommand('/ipban')" style="display:none;">🚫 IP BAN実行</button>
+            <button class="admin-btn btn-orange" id="ipbanlist-btn" onclick="clickCommand('/ipbanlist')" style="display:none;">📋 BANリスト確認</button>
         </div>
     </div>
 
-    <!-- コマンドエリア (idを追加し、初期状態を非表示に設定) -->
-    <div class="command-container" id="admin-panel" style="display: none;">
-        <div class="command-title" id="panel-title">管理者専用の機能</div>
-        <div class="command-grid">
-            <div class="command-card" id="cmd-prm-card">
-                <div class="command-name cmd-prm">/prm</div>
-                <div class="command-desc">プライベートメッセージを送る<br><span style="color:#666">例: /prm ユーザー名 内容</span></div>
-            </div>
-            <div class="command-card class-admin-only">
-                <div class="command-name cmd-admin">/delete <span class="badge badge-admin">管理者専用</span></div>
-                <div class="command-desc">全メッセージを削除</div>
-            </div>
-            <div class="command-card class-admin-only">
-                <div class="command-name cmd-admin">/mute <span class="badge badge-admin">管理者専用</span></div>
-                <div class="command-desc">ユーザーを一時的にミュート<br><span style="color:#666">例: /mute ユーザー名 60</span></div>
-            </div>
-            <div class="command-card class-admin-only">
-                <div class="command-name cmd-admin">/unmute <span class="badge badge-admin">管理者専用</span></div>
-                <div class="command-desc">ミュートを解除します<br><span style="color:#666">例: /unmute ユーザー名</span></div>
-            </div>
-            <div class="command-card class-admin-only">
-                <div class="command-name cmd-admin">/ban <span class="badge badge-admin">管理者専用</span></div>
-                <div class="command-desc">ユーザーをチャットから追い出す<br><span style="color:#666">例: /ban ユーザー名</span></div>
-            </div>
-            <div class="command-card class-admin-only">
-                <div class="command-name cmd-admin">/unban <span class="badge badge-admin">管理者専用</span></div>
-                <div class="command-desc">BANを解除します<br><span style="color:#666">例: /unban ユーザー名</span></div>
-            </div>
-            <div class="command-card class-super-only">
-                <div class="command-name cmd-admin" style="color:#be7ffb">/ipban <span class="badge badge-super">特権管理者専用</span></div>
-                <div class="command-desc">ユーザー名またはIPアドレスでBANする<br><span style="color:#666">例: /ipban ユーザー名</span></div>
-            </div>
-            <div class="command-card class-super-only">
-                <div class="command-name cmd-admin" style="color:#be7ffb">/ipunban <span class="badge badge-super">特権管理者専用</span></div>
-                <div class="command-desc">IPバンを解除する<br><span style="color:#666">例: /ipunban IPアドレス</span></div>
-            </div>
-            <div class="command-card class-super-only">
-                <div class="command-name cmd-admin" style="color:#be7ffb">/ipbanlist <span class="badge badge-super">特権管理者専用</span></div>
-                <div class="command-desc">IPバンリストを表示</div>
-            </div>
-        </div>
+    <!-- メッセージ入力エリア -->
+    <div class="input-area">
+        <input type="text" id="msg-input" placeholder="メッセージを入力... (Enterで送信)" onkeydown="if(event.key==='Enter') sendMessage()">
+        <button class="send-btn" onclick="sendMessage()">送信</button>
     </div>
 
-<script>
-    const socket = io();
-    const username = localStorage.getItem('chat_user') || 'ゲスト';
-    const role = localStorage.getItem('chat_role') || 'user';
+    <!-- Socket.ioライブラリと通信処理 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
 
-    if (!localStorage.getItem('chat_user')) {
-        window.location.href = '/index.html';
-    }
+        // ローカルストレージからログイン情報を取得
+        const myUsername = localStorage.getItem('chat_user') || 'ゲスト';
+        const myRole = localStorage.getItem('chat_role') || 'user';
 
-    // --- 【追加】権限（role）によるコマンドエリアの表示切り替え ---
-    const adminPanel = document.getElementById('admin-panel');
-    const panelTitle = document.getElementById('panel-title');
-    const adminCards = document.querySelectorAll('.class-admin-only');
-    const superCards = document.querySelectorAll('.class-super-only');
+        // 画面上部に自分の情報を表示
+        let roleText = "一般ユーザー";
+        if (myRole === 'super_admin') roleText = "★特権管理者";
+        if (myRole === 'admin') roleText = "管理者";
+        document.getElementById('display-info').innerText = `${myUsername} (${roleText})`;
 
-    if (role === 'user') {
-        // 一般ユーザーには枠ごと非表示
-        adminPanel.style.display = 'none';
-    } else if (role === 'admin') {
-        // 通常管理者は枠を表示し、特権コマンドカードのみ非表示
-        adminPanel.style.display = 'block';
-        panelTitle.innerText = '管理者専用の機能';
-        superCards.forEach(card => card.style.display = 'none');
-    } else if (role === 'super_admin') {
-        // 特権管理者はすべて表示
-        adminPanel.style.display = 'block';
-        panelTitle.innerText = '特権管理者専用の機能';
-    }
-
-    socket.emit('join', { username, role });
-
-    function updateCount() {
-        const len = document.getElementById('msg-input').value.length;
-        document.getElementById('char-counter').innerText = `${len}/200`;
-    }
-
-    function sendMessage() {
-        const input = document.getElementById('msg-input');
-        const text = input.value.trim();
-        if (!text) return;
-
-        socket.emit('chat_message', text);
-        input.value = '';
-        updateCount();
-    }
-
-    document.getElementById('msg-input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
+        // 管理者ならパネルを表示、特権管理者ならさらにボタンを解放
+        if (myRole === 'admin' || myRole === 'super_admin') {
+            document.getElementById('admin-panel').style.display = 'block';
+            if (myRole === 'super_admin') {
+                document.getElementById('ipban-btn').style.display = 'block';
+                document.getElementById('ipbanlist-btn').style.display = 'block';
+            }
         }
-    });
 
-    socket.on('message', (msg) => {
-        const box = document.getElementById('chat-box');
-        const now = new Date();
-        const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
-        
-        box.innerHTML += `
-            <div class="message">
-                <div class="username">${msg.username}</div>
-                <div class="text">${msg.text}</div>
-                <div class="time">${timeStr}</div>
-            </div>
-        `;
-        box.scrollTop = box.scrollHeight;
-    });
+        // サーバーにチャット参加を伝える
+        socket.emit('join', { username: myUsername, role: myRole });
 
-    socket.on('system_message', (text) => {
-        const box = document.getElementById('chat-box');
-        box.innerHTML += `<div class="system-msg">${text}</div>`;
-        box.scrollTop = box.scrollHeight;
-    });
+        // メッセージ送信
+        function sendMessage() {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if (!text) return;
 
-    function logout() {
-        localStorage.clear();
-        window.location.href = '/index.html';
-    }
-</script>
+            socket.emit('chat_message', text); // サーバーへ送信
+            input.value = ''; // 入力欄を空にする
+        }
+
+        // 管理パネルのボタンをクリックした時の連動処理
+        function clickCommand(cmd) {
+            const input = document.getElementById('msg-input');
+            if (cmd === '/delete' || cmd === '/ipbanlist') {
+                // 引数がいらないコマンドはそのまま送信
+                socket.emit('chat_message', cmd);
+            } else {
+                // ターゲットの名前が必要なコマンドはテキストボックスに自動入力してフォーカスを当てる
+                input.value = `${cmd} `;
+                input.focus();
+            }
+        }
+
+        // サーバーから通常メッセージを受信
+        socket.on('chat_message', (data) => {
+            const container = document.getElementById('messages');
+            
+            const msgBlock = document.createElement('div');
+            msgBlock.className = 'msg-block msg-user';
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'sender-name';
+            nameEl.innerText = data.username;
+
+            const textEl = document.createElement('div');
+            textEl.innerText = data.message;
+
+            msgBlock.appendChild(nameEl);
+            msgBlock.appendChild(textEl);
+            container.appendChild(msgBlock);
+
+            // 自動スクロール
+            container.scrollTop = container.scrollHeight;
+        });
+
+        // サーバーからシステムメッセージを受信
+        socket.on('system_message', (msg) => {
+            const container = document.getElementById('messages');
+            const msgBlock = document.createElement('div');
+            msgBlock.className = 'msg-block msg-system';
+            msgBlock.innerText = msg;
+            
+            container.appendChild(msgBlock);
+            container.scrollTop = container.scrollHeight;
+        });
+
+        // 全メッセージ削除（/delete）の合図を受け取ったとき
+        socket.on('clear_messages', () => {
+            document.getElementById('messages').innerHTML = '';
+        });
+    </script>
 </body>
 </html>
-
-
