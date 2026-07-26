@@ -8,25 +8,21 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
         body { background-color: #eef2f3; display: flex; flex-direction: column; height: 100vh; }
         
-        /* ヘッダー */
         header { background: #3498db; color: white; padding: 15px 20px; font-size: 20px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .user-info { font-size: 14px; background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 20px; }
 
-        /* チャットエリア */
         #messages { flex: 1; padding: 20px; overflow-y: auto; background: #fff; display: flex; flex-direction: column; gap: 10px; }
         .msg-block { padding: 10px 15px; border-radius: 8px; max-width: 70%; width: fit-content; line-height: 1.4; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .msg-user { background: #e3f2fd; align-self: flex-start; }
         .msg-system { background: #f5f5f5; color: #757575; font-size: 13px; font-style: italic; align-self: center; text-align: center; box-shadow: none; }
         .sender-name { font-size: 12px; color: #616161; margin-bottom: 3px; font-weight: bold; }
 
-        /* 入力エリア */
         .input-area { background: #fdfdfd; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #e0e0e0; }
         #msg-input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; outline: none; }
         #msg-input:focus { border-color: #3498db; }
         .send-btn { padding: 0 25px; background: #3498db; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; }
         .send-btn:hover { background: #2980b9; }
 
-        /* コマンドパネル（特権管理者・管理者用） */
         #admin-panel { background: #222; color: #fff; padding: 15px; border-top: 1px solid #444; display: none; }
         .panel-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #bbb; }
         .btn-group { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -43,7 +39,6 @@
         <div class="user-info" id="display-info">接続中...</div>
     </header>
 
-    <!-- メッセージ表示エリア -->
     <div id="messages"></div>
 
     <!-- 管理者コマンドパネル -->
@@ -53,72 +48,71 @@
             <button class="admin-btn btn-red" onclick="clickCommand('/delete')">🧹 全メッセージ消去</button>
             <button class="admin-btn btn-orange" onclick="clickCommand('/mute')">🔇 ミュートする</button>
             <button class="admin-btn btn-green" onclick="clickCommand('/unmute')">🔊 ミュート解除</button>
-            <button class="admin-btn btn-red" onclick="clickCommand('/ban')">🚪 ユーザー追放(BAN)</button>
+            <button class="admin-btn btn-red" onclick="clickCommand('/ban')">🚪 ユーザー追放(キック)</button>
+            <!-- 最高管理者専用ボタン -->
+            <button class="admin-btn btn-orange" id="rename-btn" onclick="clickCommand('/rename')" style="display:none;">📛 ゲスト名前変更</button>
             <button class="admin-btn btn-red" id="ipban-btn" onclick="clickCommand('/ipban')" style="display:none;">🚫 IP BAN実行</button>
             <button class="admin-btn btn-orange" id="ipbanlist-btn" onclick="clickCommand('/ipbanlist')" style="display:none;">📋 BANリスト確認</button>
         </div>
     </div>
 
-    <!-- メッセージ入力エリア -->
     <div class="input-area">
         <input type="text" id="msg-input" placeholder="メッセージを入力... (Enterで送信)" onkeydown="if(event.key==='Enter') sendMessage()">
         <button class="send-btn" onclick="sendMessage()">送信</button>
     </div>
 
-    <!-- Socket.ioライブラリと通信処理 -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        // ★ 直アクセス防止：ログインしていない（名前がない）場合はログイン画面に戻す
+        if (!localStorage.getItem('chat_user')) {
+            window.location.href = '/index.html';
+        }
+
         const socket = io();
 
-        // ローカルストレージからログイン情報を取得
         const myUsername = localStorage.getItem('chat_user') || 'ゲスト';
         const myRole = localStorage.getItem('chat_role') || 'user';
 
-        // 画面上部に自分の情報を表示
         let roleText = "一般ユーザー";
         if (myRole === 'super_admin') roleText = "★特権管理者";
         if (myRole === 'admin') roleText = "管理者";
         document.getElementById('display-info').innerText = `${myUsername} (${roleText})`;
 
-        // 管理者ならパネルを表示、特権管理者ならさらにボタンを解放
         if (myRole === 'admin' || myRole === 'super_admin') {
             document.getElementById('admin-panel').style.display = 'block';
             if (myRole === 'super_admin') {
+                document.getElementById('rename-btn').style.display = 'block';
                 document.getElementById('ipban-btn').style.display = 'block';
                 document.getElementById('ipbanlist-btn').style.display = 'block';
             }
         }
 
-        // サーバーにチャット参加を伝える
         socket.emit('join', { username: myUsername, role: myRole });
 
-        // メッセージ送信
         function sendMessage() {
             const input = document.getElementById('msg-input');
             const text = input.value.trim();
             if (!text) return;
-
-            socket.emit('chat_message', text); // サーバーへ送信
-            input.value = ''; // 入力欄を空にする
+            socket.emit('chat_message', text);
+            input.value = '';
         }
 
-        // 管理パネルのボタンをクリックした時の連動処理
         function clickCommand(cmd) {
             const input = document.getElementById('msg-input');
             if (cmd === '/delete' || cmd === '/ipbanlist') {
-                // 引数がいらないコマンドはそのまま送信
                 socket.emit('chat_message', cmd);
+            } else if (cmd === '/rename') {
+                // 名前変更は引数が2つ必要なのでヒントを出す
+                input.value = `${cmd} 変更前の名前 変更後の名前`;
+                input.focus();
             } else {
-                // ターゲットの名前が必要なコマンドはテキストボックスに自動入力してフォーカスを当てる
                 input.value = `${cmd} `;
                 input.focus();
             }
         }
 
-        // サーバーから通常メッセージを受信
         socket.on('chat_message', (data) => {
             const container = document.getElementById('messages');
-            
             const msgBlock = document.createElement('div');
             msgBlock.className = 'msg-block msg-user';
 
@@ -132,25 +126,32 @@
             msgBlock.appendChild(nameEl);
             msgBlock.appendChild(textEl);
             container.appendChild(msgBlock);
-
-            // 自動スクロール
             container.scrollTop = container.scrollHeight;
         });
 
-        // サーバーからシステムメッセージを受信
         socket.on('system_message', (msg) => {
             const container = document.getElementById('messages');
             const msgBlock = document.createElement('div');
             msgBlock.className = 'msg-block msg-system';
             msgBlock.innerText = msg;
-            
             container.appendChild(msgBlock);
             container.scrollTop = container.scrollHeight;
         });
 
-        // 全メッセージ削除（/delete）の合図を受け取ったとき
         socket.on('clear_messages', () => {
             document.getElementById('messages').innerHTML = '';
+        });
+
+        // ★ サーバーから強制名前変更を受け取ったときの処理
+        socket.on('force_rename', (newName) => {
+            localStorage.setItem('chat_user', newName); // ストレージ更新
+            
+            let currentRoleText = "一般ユーザー";
+            if (myRole === 'super_admin') currentRoleText = "★特権管理者";
+            if (myRole === 'admin') currentRoleText = "管理者";
+            document.getElementById('display-info').innerText = `${newName} (${currentRoleText})`;
+            
+            alert(`特権管理者により、あなたの名前は「${newName}」に変更されました。`);
         });
     </script>
 </body>
