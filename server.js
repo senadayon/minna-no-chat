@@ -12,7 +12,7 @@ const users = {};
 const ipBanList = new Set(); // BANされたIPを保存する場所
 
 // ★ 特権管理者になるためのシークレットパスワード（自由に変更してください）
-const SUPER_ADMIN_SECRET = "003kok25";
+const SUPER_ADMIN_SECRET = "だよ";
 
 // ログイン・新規登録用のAPI
 app.post('/api/register', (req, res) => {
