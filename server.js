@@ -11,13 +11,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 const users = {}; 
 const ipBanList = new Set(); // BANされたIPを保存する場所
 
-// ★ 特権管理者になるためのシークレットパスワード（英語と数字が安全です）
+// ★ 特権管理者になるためのシークレットパスワード
 const SUPER_ADMIN_SECRET = "dayo003";
 
 // ログイン・新規登録用のAPI
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
     
+    if (!username) return res.json({ success: false, message: 'ユーザー名を入力してください' });
+
     // スペースで区切ってシークレットコードが入力されているかチェック
     const parts = username.trim().split(' ');
     const actualUsername = parts[0];
@@ -32,23 +34,32 @@ app.post('/api/register', (req, res) => {
     }
 
     users[actualUsername] = { password, role };
-    res.json({ success: true });
+    
+    // 画面側に確定したroleをしっかり返す
+    res.json({ success: true, username: actualUsername, role: role });
 });
 
 app.post('/api/login', (req, res) => {
     const { username, password, isAdminRequested } = req.body;
-    const user = users[username];
+    
+    if (!username) return res.json({ success: false, message: 'ユーザー名を入力してください' });
+    
+    const actualUsername = username.trim().split(' ')[0];
+    const user = users[actualUsername];
+    
     if (!user || user.password !== password) {
         return res.json({ success: false, message: 'ユーザー名またはパスワードが違います' });
     }
 
     let currentRole = user.role;
+    
     // 一般ユーザーだけど「管理者としてログイン」にチェックを入れた場合はデモ用adminにする
     if (isAdminRequested && currentRole === 'user') {
         currentRole = 'admin';
     }
 
-    res.json({ success: true, role: currentRole });
+    // 画面側に確定したroleをしっかり返す
+    res.json({ success: true, username: actualUsername, role: currentRole });
 });
 
 // 通信（Socket.io）の処理
