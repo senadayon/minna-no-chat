@@ -62,43 +62,43 @@
         </div>
     </div>
 
-    <!-- コマンドエリア -->
-    <div class="command-container">
-        <div class="command-title">管理者＆特権管理者専用の機能</div>
+    <!-- コマンドエリア (idを追加し、初期状態を非表示に設定) -->
+    <div class="command-container" id="admin-panel" style="display: none;">
+        <div class="command-title" id="panel-title">管理者専用の機能</div>
         <div class="command-grid">
-            <div class="command-card">
+            <div class="command-card" id="cmd-prm-card">
                 <div class="command-name cmd-prm">/prm</div>
                 <div class="command-desc">プライベートメッセージを送る<br><span style="color:#666">例: /prm ユーザー名 内容</span></div>
             </div>
-            <div class="command-card">
+            <div class="command-card class-admin-only">
                 <div class="command-name cmd-admin">/delete <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">全メッセージを削除</div>
             </div>
-            <div class="command-card">
+            <div class="command-card class-admin-only">
                 <div class="command-name cmd-admin">/mute <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">ユーザーを一時的にミュート<br><span style="color:#666">例: /mute ユーザー名 60</span></div>
             </div>
-            <div class="command-card">
+            <div class="command-card class-admin-only">
                 <div class="command-name cmd-admin">/unmute <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">ミュートを解除します<br><span style="color:#666">例: /unmute ユーザー名</span></div>
             </div>
-            <div class="command-card">
+            <div class="command-card class-admin-only">
                 <div class="command-name cmd-admin">/ban <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">ユーザーをチャットから追い出す<br><span style="color:#666">例: /ban ユーザー名</span></div>
             </div>
-            <div class="command-card">
+            <div class="command-card class-admin-only">
                 <div class="command-name cmd-admin">/unban <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">BANを解除します<br><span style="color:#666">例: /unban ユーザー名</span></div>
             </div>
-            <div class="command-card">
+            <div class="command-card class-super-only">
                 <div class="command-name cmd-admin" style="color:#be7ffb">/ipban <span class="badge badge-super">特権管理者専用</span></div>
                 <div class="command-desc">ユーザー名またはIPアドレスでBANする<br><span style="color:#666">例: /ipban ユーザー名</span></div>
             </div>
-            <div class="command-card">
+            <div class="command-card class-super-only">
                 <div class="command-name cmd-admin" style="color:#be7ffb">/ipunban <span class="badge badge-super">特権管理者専用</span></div>
                 <div class="command-desc">IPバンを解除する<br><span style="color:#666">例: /ipunban IPアドレス</span></div>
             </div>
-            <div class="command-card">
+            <div class="command-card class-super-only">
                 <div class="command-name cmd-admin" style="color:#be7ffb">/ipbanlist <span class="badge badge-super">特権管理者専用</span></div>
                 <div class="command-desc">IPバンリストを表示</div>
             </div>
@@ -112,6 +112,26 @@
 
     if (!localStorage.getItem('chat_user')) {
         window.location.href = '/index.html';
+    }
+
+    // --- 【追加】権限（role）によるコマンドエリアの表示切り替え ---
+    const adminPanel = document.getElementById('admin-panel');
+    const panelTitle = document.getElementById('panel-title');
+    const adminCards = document.querySelectorAll('.class-admin-only');
+    const superCards = document.querySelectorAll('.class-super-only');
+
+    if (role === 'user') {
+        // 一般ユーザーには枠ごと非表示
+        adminPanel.style.display = 'none';
+    } else if (role === 'admin') {
+        // 通常管理者は枠を表示し、特権コマンドカードのみ非表示
+        adminPanel.style.display = 'block';
+        panelTitle.innerText = '管理者専用の機能';
+        superCards.forEach(card => card.style.display = 'none');
+    } else if (role === 'super_admin') {
+        // 特権管理者はすべて表示
+        adminPanel.style.display = 'block';
+        panelTitle.innerText = '特権管理者専用の機能';
     }
 
     socket.emit('join', { username, role });
