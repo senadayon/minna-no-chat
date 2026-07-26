@@ -11,8 +11,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 const users = {}; 
 const ipBanList = new Set(); // BANされたIPを保存する場所
 
-// ★ 特権管理者になるためのシークレットパスワード（自由に変更してください）
-const SUPER_ADMIN_SECRET = "だよ";
+// ★ 特権管理者になるためのシークレットパスワード（英語と数字が安全です）
+const SUPER_ADMIN_SECRET = "dayo003";
 
 // ログイン・新規登録用のAPI
 app.post('/api/register', (req, res) => {
