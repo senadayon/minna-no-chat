@@ -11,44 +11,66 @@ app.use(express.static(path.join(__dirname, 'public')));
 const users = {}; 
 const ipBanList = new Set(); // BANされたIPを保存する場所
 
-// ミュートされたユーザーを記録するセット (Socket ID で管理)
-const mutedUsers = new Set();
+// ★ 特権管理者になるためのシークレットパスワード
+const SUPER_ADMIN_SECRET = "dayo003";
 
-// ログイン・新規登録用のAPI
+// ==========================================
+// ログイン・新規登録用のAPI（完全修正版）
+// ==========================================
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
-    if (users[username]) return res.json({ success: false, message: '既に存在するユーザー名です' });
-    users[username] = { password, role: 'user' };
-    res.json({ success: true });
+    
+    if (!username) return res.json({ success: false, message: 'ユーザー名を入力してください' });
+
+    // スペースで区切ってシークレットコードが入力されているかチェック
+    const parts = username.trim().split(' ');
+    const actualUsername = parts[0];
+    const secretCode = parts[1];
+
+    if (users[actualUsername]) return res.json({ success: false, message: '既に存在するユーザー名です' });
+    
+    // パスワードが一致したら特権管理者、それ以外は一般ユーザー
+    let role = 'user';
+    if (secretCode === SUPER_ADMIN_SECRET) {
+        role = 'super_admin';
+    }
+
+    users[actualUsername] = { password, role };
+    
+    // 登録成功時にroleをしっかり返す
+    res.json({ success: true, username: actualUsername, role: role });
 });
 
 app.post('/api/login', (req, res) => {
-    const { username, password, isAdminRequested, adminPassword } = req.body;
-    const user = users[username];
+    const { username, password, isAdminRequested } = req.body;
+    
+    if (!username) return res.json({ success: false, message: 'ユーザー名を入力してください' });
+    
+    const actualUsername = username.trim().split(' ')[0];
+    const user = users[actualUsername];
     
     if (!user || user.password !== password) {
         return res.json({ success: false, message: 'ユーザー名またはパスワードが違います' });
     }
 
     let currentRole = user.role;
-
-    if (isAdminRequested) {
-        if (adminPassword === "dayo003") {
-            currentRole = 'super_admin';
-        } else if (adminPassword === "003kok25") {
-            currentRole = 'admin';
-        } else {
-            return res.json({ success: false, message: '管理者用パスワードが間違っています' });
-        }
+    
+    // 一般ユーザーだけど「管理者としてログイン」にチェックを入れた場合はデモ用adminにする
+    if (isAdminRequested && currentRole === 'user') {
+        currentRole = 'admin';
     }
 
-    res.json({ success: true, role: currentRole });
+    // 画面側に確定したroleをしっかり返す
+    res.json({ success: true, username: actualUsername, role: currentRole });
 });
 
+// ==========================================
 // 通信（Socket.io）の処理
+// ==========================================
 io.on('connection', (socket) => {
     const userIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
 
+    // IPがBANリストに入っていたら即切断
     if (ipBanList.has(userIp)) {
         socket.emit('system_message', 'あなたのアドレスは特権管理者によりアクセス禁止(IP BAN)されています。');
         socket.disconnect();
@@ -59,155 +81,105 @@ io.on('connection', (socket) => {
 
     socket.on('join', ({ username, role }) => {
         currentUser = { username, role, ip: userIp, id: socket.id };
-        socket.username = username;
-        io.emit('system_message', `${username}さんが参加しました。(${role})`);
+        if (users[username]) {
+            users[username].socketId = socket.id;
+            users[username].ip = userIp;
+        }
+        io.emit('system_message', `${username}がチャットに参加しました`);
     });
 
     socket.on('chat_message', (msg) => {
         if (!currentUser) return;
 
-        if (mutedUsers.has(socket.id)) {
-            socket.emit('system_message', 'あなたは現在ミュートされているため発言できません。');
-            return;
+        if (msg.startsWith('/')) {
+            handleCommand(socket, currentUser, msg);
+        } else {
+            io.emit('message', { username: currentUser.username, text: msg });
         }
-
-        const text = msg.trim();
-
-        if (text.startsWith('/')) {
-            const parts = text.split(' ');
-            const command = parts[0]; 
-            const targetName = parts[1]; 
-            const option = parts[2]; 
-
-            const isAdmin = currentUser.role === 'admin' || currentUser.role === 'super_admin';
-            const isSuperAdmin = currentUser.role === 'super_admin';
-
-            // 1. 管理者・特権管理者 共通コマンド
-            if (isAdmin) {
-                switch (command) {
-                    case '/delete':
-                        io.emit('clear_messages');
-                        io.emit('system_message', `管理者 ${currentUser.username} により、全メッセージが削除されました。`);
-                        return;
-
-                    case '/mute':
-                        if (!targetName) return socket.emit('system_message', '使用例: /mute ユーザー名 秒数');
-                        const muteSocket = [...io.sockets.sockets.values()].find(s => s.username === targetName);
-                        if (muteSocket) {
-                            mutedUsers.add(muteSocket.id);
-                            const seconds = parseInt(option) || 60;
-                            io.emit('system_message', `${targetName} さんが ${seconds} 秒間ミュートされました。`);
-                            setTimeout(() => {
-                                if (mutedUsers.has(muteSocket.id)) {
-                                    mutedUsers.delete(muteSocket.id);
-                                    muteSocket.emit('system_message', 'ミュートが解除されました。');
-                                }
-                            }, seconds * 1000);
-                        } else {
-                            socket.emit('system_message', `ユーザー ${targetName} が見つかりません。`);
-                        }
-                        return;
-
-                    case '/unmute':
-                        if (!targetName) return socket.emit('system_message', '使用例: /unmute ユーザー名');
-                        const unmuteSocket = [...io.sockets.sockets.values()].find(s => s.username === targetName);
-                        if (unmuteSocket && mutedUsers.has(unmuteSocket.id)) {
-                            mutedUsers.delete(unmuteSocket.id);
-                            io.emit('system_message', `${targetName} のミュートが解除されました。`);
-                        } else {
-                            socket.emit('system_message', `対象のユーザーが見つからないか、ミュートされていません。`);
-                        }
-                        return;
-
-                    case '/ban':
-                        if (!targetName) return socket.emit('system_message', '使用例: /ban ユーザー名');
-                        const banSocket = [...io.sockets.sockets.values()].find(s => s.username === targetName);
-                        if (banSocket) {
-                            banSocket.emit('system_message', '管理者によりチャットから追放されました。');
-                            banSocket.disconnect();
-                            io.emit('system_message', `${targetName} さんがチャットから追放されました。`);
-                        } else {
-                            socket.emit('system_message', `ユーザー ${targetName} が見つかりません。`);
-                        }
-                        return;
-                }
-            }
-
-            // 2. 特権管理者 専用コマンド
-            if (isSuperAdmin) {
-                switch (command) {
-                    case '/rename': // ★最高管理者専用の名前強制変更
-                        if (!targetName || !option) return socket.emit('system_message', '使用例: /rename 旧名 新名');
-                        const renameSocket = [...io.sockets.sockets.values()].find(s => s.username === targetName);
-                        if (renameSocket) {
-                            const oldName = renameSocket.username;
-                            const newName = option;
-                            renameSocket.username = newName;
-                            renameSocket.emit('force_rename', newName); // 本人に通知
-                            io.emit('system_message', `特権管理者により、${oldName} さんの名前が ${newName} に変更されました。`);
-                        } else {
-                            socket.emit('system_message', `ユーザー ${targetName} が見つかりません。`);
-                        }
-                        return;
-
-                    case '/ipban':
-                        if (!targetName) return socket.emit('system_message', '使用例: /ipban ユーザー名');
-                        const targetSocket = [...io.sockets.sockets.values()].find(s => s.username === targetName);
-                        if (targetSocket) {
-                            const targetIp = targetSocket.handshake.headers['x-forwarded-for'] || targetSocket.handshake.address;
-                            ipBanList.add(targetIp);
-                            targetSocket.emit('system_message', 'あなたのアドレスは特権管理者によりアクセス禁止(IP BAN)されています。');
-                            targetSocket.disconnect();
-                            io.emit('system_message', `${targetName} さんが IP BAN されました。`);
-                        } else {
-                            ipBanList.add(targetName);
-                            socket.emit('system_message', `IPアドレス ${targetName} を BAN リストに追加しました。`);
-                        }
-                        return;
-
-                    case '/ipunban':
-                        if (!targetName) return socket.emit('system_message', '使用例: /ipunban IPアドレス');
-                        if (ipBanList.has(targetName)) {
-                            ipBanList.delete(targetName);
-                            socket.emit('system_message', `IPアドレス ${targetName} の BAN を解除しました。`);
-                        } else {
-                            socket.emit('system_message', '指定されたIPは BAN リストにありません。');
-                        }
-                        return;
-
-                    case '/ipbanlist':
-                        const list = [...ipBanList].join(', ') || 'なし';
-                        socket.emit('system_message', `【現在のIP BANリスト】: ${list}`);
-                        return;
-                }
-            }
-
-            socket.emit('system_message', 'エラー: このコマンドを実行する権限がないか、存在しないコマンドです。');
-            return;
-        }
-
-        let displayUsername = currentUser.username;
-        if (currentUser.role === 'super_admin') {
-            displayUsername += ' [★特権管理者]';
-        } else if (currentUser.role === 'admin') {
-            displayUsername += ' [管理者]';
-        }
-
-        io.emit('chat_message', {
-            username: displayUsername,
-            message: msg,
-            role: currentUser.role
-        });
     });
 
     socket.on('disconnect', () => {
         if (currentUser) {
-            io.emit('system_message', `${currentUser.username}さんが退室しました。`);
+            io.emit('system_message', `${currentUser.username}がチャットから退出しました`);
         }
     });
 });
 
+// コマンドの判定と実行
+function handleCommand(socket, user, msg) {
+    const args = msg.split(' ');
+    const command = args[0];
+
+    // --- 【特権管理者専用コマンド】 ---
+    if (command === '/ipban') {
+        if (user.role !== 'super_admin') {
+            socket.emit('system_message', '❌ エラー: 特権管理者のみ実行可能なコマンドです。');
+            return;
+        }
+        const targetName = args[1];
+        if (!targetName || !users[targetName] || !users[targetName].ip) {
+            socket.emit('system_message', '⚠️ ユーザー名が正しくないか、オンラインではありません。');
+            return;
+        }
+
+        const targetIp = users[targetName].ip;
+        const targetSocketId = users[targetName].socketId;
+
+        ipBanList.add(targetIp);
+        io.emit('system_message', `🚨 警告: ${targetName} が特権管理者によってIP BANされました。`);
+
+        const targetSocket = io.sockets.sockets.get(targetSocketId);
+        if (targetSocket) {
+            targetSocket.emit('system_message', 'あなたのアドレスは特権管理者によりアクセス禁止にされました。');
+            targetSocket.disconnect();
+        }
+        return;
+    }
+
+    if (command === '/ipbanlist') {
+        if (user.role !== 'super_admin') {
+            socket.emit('system_message', '❌ エラー: 特権管理者のみ実行可能なコマンドです。');
+            return;
+        }
+        const list = Array.from(ipBanList).join(', ') || '現在BANされているIPはありません。';
+        socket.emit('system_message', `📋 【IP BAN リスト】: ${list}`);
+        return;
+    }
+
+    if (command === '/ipunban') {
+        if (user.role !== 'super_admin') {
+            socket.emit('system_message', '❌ エラー: 特権管理者のみ実行可能なコマンドです。');
+            return;
+        }
+        const targetIp = args[1];
+        if (!targetIp) {
+            socket.emit('system_message', '⚠️ 解除するIPアドレスを指定してください。例: /ipunban 127.0.0.1');
+            return;
+        }
+
+        if (ipBanList.has(targetIp)) {
+            ipBanList.delete(targetIp);
+            socket.emit('system_message', `✅ IPアドレス [ ${targetIp} ] のBANを解除しました。`);
+        } else {
+            socket.emit('system_message', '⚠️ そのIPはBANリストに登録されていません。');
+        }
+        return;
+    }
+
+    // --- 【一般・通常の管理者コマンド】 ---
+    if (command === '/delete') {
+        if (user.role !== 'admin' && user.role !== 'super_admin') {
+            socket.emit('system_message', '❌ エラー: 管理者以上の権限が必要です。');
+            return;
+        }
+        io.emit('system_message', '🧹 管理者によってチャットログが全削除されました（画面を更新してください）。');
+        return;
+    }
+
+    socket.emit('system_message', '⚠️ 知らないコマンド、またはまだ実装されていないコマンドです。');
+}
+
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`サーバーがポート ${PORT} で起動しました`);
 });
