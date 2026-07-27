@@ -65,7 +65,7 @@
     <!-- 【追加】爆音通知用の隠しオーディオタグ -->
     <audio id="notif-sound" src="/notification.mp3" preload="auto"></audio>
 
-    <!-- コマンドエリア（最初は隠しておき、権限に応じて表示） -->
+       <!-- コマンドエリア（最初は隠しておき、権限に応じて表示） -->
     <div class="command-container" id="admin-panel" style="display: none;">
         <div class="command-title" id="panel-title">管理者専用の機能</div>
         <div class="command-grid">
@@ -73,35 +73,35 @@
                 <div class="command-name cmd-prm">/prm</div>
                 <div class="command-desc">プライベートメッセージを送る<br><span style="color:#666">例: /prm ユーザー名 内容</span></div>
             </div>
-            <div class="command-card class-admin-only">
+            <div class="command-card admin-only">
                 <div class="command-name cmd-admin">/delete <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">全メッセージを削除</div>
             </div>
-            <div class="command-card class-admin-only">
+            <div class="command-card admin-only">
                 <div class="command-name cmd-admin">/mute <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">ユーザーを一時的にミュート<br><span style="color:#666">例: /mute ユーザー名 60</span></div>
             </div>
-            <div class="command-card class-admin-only">
+            <div class="command-card admin-only">
                 <div class="command-name cmd-admin">/unmute <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">ミュートを解除します<br><span style="color:#666">例: /unmute ユーザー名</span></div>
             </div>
-            <div class="command-card class-admin-only">
+            <div class="command-card admin-only">
                 <div class="command-name cmd-admin">/ban <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">ユーザーをチャットから追い出す<br><span style="color:#666">例: /ban ユーザー名</span></div>
             </div>
-            <div class="command-card class-admin-only">
+            <div class="command-card admin-only">
                 <div class="command-name cmd-admin">/unban <span class="badge badge-admin">管理者専用</span></div>
                 <div class="command-desc">BANを解除します<br><span style="color:#666">例: /unban ユーザー名</span></div>
             </div>
-            <div class="command-card class-super-only">
+            <div class="command-card super-only">
                 <div class="command-name cmd-admin" style="color:#be7ffb">/ipban <span class="badge badge-super">特権管理者専用</span></div>
                 <div class="command-desc">ユーザー名またはIPアドレスでBANする<br><span style="color:#666">例: /ipban ユーザー名</span></div>
             </div>
-            <div class="command-card class-super-only">
+            <div class="command-card super-only">
                 <div class="command-name cmd-admin" style="color:#be7ffb">/ipunban <span class="badge badge-super">特権管理者専用</span></div>
                 <div class="command-desc">IPバンを解除する<br><span style="color:#666">例: /ipunban IPアドレス</span></div>
             </div>
-            <div class="command-card class-super-only">
+            <div class="command-card super-only">
                 <div class="command-name cmd-admin" style="color:#be7ffb">/ipbanlist <span class="badge badge-super">特権管理者専用</span></div>
                 <div class="command-desc">IPバンリストを表示</div>
             </div>
@@ -120,7 +120,7 @@
     // --- 権限（role）によるメニューの非表示ロジック ---
     const adminPanel = document.getElementById('admin-panel');
     const panelTitle = document.getElementById('panel-title');
-    const superCards = document.querySelectorAll('.class-super-only');
+    const superCards = document.querySelectorAll('.super-only');
 
     if (role === 'user') {
         adminPanel.style.display = 'none';
@@ -131,6 +131,7 @@
     } else if (role === 'super_admin') {
         adminPanel.style.display = 'block';
         panelTitle.innerText = '特権管理者専用の機能';
+        superCards.forEach(card => card.style.display = 'block');
     }
 
     socket.emit('join', { username, role });
@@ -150,47 +151,11 @@
         updateCount();
     }
 
+    // 途切れていたEnterキー送信処理も補完
     document.getElementById('msg-input').addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             sendMessage();
         }
     });
-
-    socket.on('message', (msg) => {
-        const box = document.getElementById('chat-box');
-        const now = new Date();
-        const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
-        
-        box.innerHTML += `
-            <div class="message">
-                <div class="username">${msg.username}</div>
-                <div class="text">${msg.text}</div>
-                <div class="time">${timeStr}</div>
-            </div>
-        `;
-        box.scrollTop = box.scrollHeight;
-
-        // --- 【追加】自分以外の発言のとき最大音量で通知音を鳴らす ---
-        if (msg.username !== username) {
-            const audio = document.getElementById('notif-sound');
-            audio.volume = 1.0; // 音量をMAXに強制固定
-            audio.play().catch(err => {
-                console.log("クリックされるまでブラウザが再生をブロックしています:", err);
-            });
-        }
-    });
-
-    socket.on('system_message', (text) => {
-        const box = document.getElementById('chat-box');
-        box.innerHTML += `<div class="system-msg">${text}</div>`;
-        box.scrollTop = box.scrollHeight;
-    });
-
-    function logout() {
-        localStorage.clear();
-        window.location.href = '/index.html';
-    }
 </script>
-</body>
-</html>
