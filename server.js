@@ -121,7 +121,7 @@ function handleCommand(socket, user, msg) {
 
         // ここにあなたの既存の targetSocket や IP特定、ipBanList.add のロジックが入ります
 
-        if (targetSocket) {
+                if (targetSocket) {
             targetSocket.emit('system_message', 'あなたのアドレスは特権管理者によりアクセス禁止にされました。');
             targetSocket.disconnect();
         }
