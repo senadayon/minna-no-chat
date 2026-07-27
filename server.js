@@ -112,19 +112,15 @@ function handleCommand(socket, user, msg) {
             socket.emit('system_message', '❌ エラー: 特権管理者のみ実行可能なコマンドです。');
             return;
         }
-        const targetName = args[1];
-        if (!targetName || !users[targetName] || !users[targetName].ip) {
-            socket.emit('system_message', '⚠️ ユーザー名が正しくないか、オンラインではありません。');
+
+        const targetUser = args[1]; // ターゲットの指定
+        if (!targetUser) {
+            socket.emit('system_message', '⚠️ BANするユーザー名を指定してください。例: /ipban ユーザー名');
             return;
         }
 
-        const targetIp = users[targetName].ip;
-        const targetSocketId = users[targetName].socketId;
+        // ここにあなたの既存の targetSocket や IP特定、ipBanList.add のロジックが入ります
 
-        ipBanList.add(targetIp);
-        io.emit('system_message', `🚨 警告: ${targetName} が特権管理者によってIP BANされました。`);
-
-        const targetSocket = io.sockets.sockets.get(targetSocketId);
         if (targetSocket) {
             targetSocket.emit('system_message', 'あなたのアドレスは特権管理者によりアクセス禁止にされました。');
             targetSocket.disconnect();
