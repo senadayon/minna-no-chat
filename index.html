@@ -38,7 +38,7 @@
     </div>
     <div class="checkbox-group" id="admin-toggle">
         <input type="checkbox" id="is-admin">
-        <label for="is-admin">管理者としてログイン</label>
+        <label for="is-admin">管理者ログイン</label>
     </div>
     <button class="btn" id="submit-btn" onclick="handleSubmit()">ログイン</button>
     <div class="toggle-link" id="toggle-text">
@@ -92,10 +92,10 @@
             let targetRole = 'user';
 
             if (isAdmin) {
-                const adminPassword = prompt("管理者用パスワードを入力してください：");
+                const adminPassword = prompt("管理者パスワードを入力してください：");
                 if (!adminPassword) return;
                 
-                if (adminPassword === "admin123") {
+                if (adminPassword === "003kok25") {
                     targetRole = 'admin';
                 } else {
                     return alert('管理者パスワードが違います');
