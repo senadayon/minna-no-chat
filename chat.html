@@ -70,7 +70,6 @@
         input.value = '';
         updateCount();
         if (text.startsWith('/')) { handleCommand(text); }
-        else { setTimeout(() => { appendMessage("AIアシスタント", `「${text}」を受け取りました！`); }, 1000); }
     }
     function handleCommand(cmdText) {
         if (cmdText === '/delete') { document.getElementById('chat-box').innerHTML = ''; appendSystemMessage("全削除されました。"); }
