@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>みんなのチャット</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
+        body { background-color: #1a1a1a; color: #e0e0e0; display: flex; flex-direction: column; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+        .chat-container { height: 350px; background: #262626; border-radius: 8px; padding: 20px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #333; }
+        .message { background: #333; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #3498db; position: relative; }
+        .message .username { font-weight: bold; color: #3498db; margin-bottom: 5px; font-size: 14px; }
+        .message .text { word-break: break-all; white-space: pre-wrap; }
+        .message .time { font-size: 11px; color: #888; margin-top: 5px; text-align: right; }
+        .system-msg { background: #2d2d2d; padding: 10px; border-radius: 6px; color: #1abc9c; font-size: 13px; margin: 10px 0; border-left: 4px solid #1abc9c; }
+        .input-container { background: #262626; border-radius: 8px; padding: 15px; border: 1px solid #333; margin-bottom: 20px; }
+        textarea { width: 100%; height: 60px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; padding: 10px; font-size: 14px; resize: none; outline: none; }
+        .char-count { text-align: right; font-size: 12px; color: #888; margin-top: 5px; }
+        .button-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
+        .left-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; font-size: 14px; }
+        .btn-blue { background-color: #3498db; }
+        .btn-red { background-color: #e74c3c; }
+        .command-container { background: #262626; border-radius: 8px; padding: 20px; border: 1px solid #333; }
+        .command-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; }
+        .command-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .command-card { background: #1a1a1a; border: 1px solid #444; border-radius: 8px; padding: 15px; font-size: 13px; }
+        .command-name { font-weight: bold; font-size: 15px; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+        .cmd-prm { color: #a87ffb; }
+        .cmd-admin { color: #ff6b6b; }
+        .badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; color: white; font-weight: normal; }
+        .badge-admin { background: #e74c3c; }
+        .badge-super { background: #9b59b6; }
+        .command-desc { color: #aaa; line-height: 1.4; }
+    </style>
+</head>
+<body>
+    <div class="chat-container" id="chat-box"></div>
+    <div class="input-container">
+        <textarea id="msg-input" maxlength="200" placeholder="メッセージを入力..." oninput="updateCount()"></textarea>
+        <div class="char-count" id="char-counter">0/200</div>
+        <div class="button-row">
+            <div class="left-buttons"><button class="btn btn-blue" onclick="sendMessage()">送信</button></div>
+            <button class="btn btn-red" onclick="logout()">ログアウト</button>
+        </div>
+    </div>
+    <div class="command-container" id="admin-panel" style="display: none;">
+        <div class="command-title" id="panel-title">管理者専用の機能</div>
+        <div class="command-grid">
+            <div class="command-card"><div class="command-name cmd-prm">/prm</div><div class="command-desc">プライベートメッセージを送る</div></div>
+            <div class="command-card"><div class="command-name cmd-admin">/delete <span class="badge badge-admin">管理者専用</span></div><div class="command-desc">全メッセージを削除</div></div>
+            <div class="command-card"><div class="command-name cmd-admin">/mute <span class="badge badge-admin">管理者専用</span></div><div class="command-desc">ユーザーをミュート</div></div>
+        </div>
+    </div>
+<script>
+    const username = localStorage.getItem('chat_user') || 'ゲスト';
+    const role = localStorage.getItem('chat_role') || 'user';
+    let isMuted = false;
+    if (!localStorage.getItem('chat_user')) { window.location.href = './index.html'; }
+    const adminPanel = document.getElementById('admin-panel');
+    if (role === 'admin' || role === 'super_admin') { adminPanel.style.display = 'block'; }
+    appendSystemMessage(`${username}さん（権限: ${role}）が参加しました。`);
+    function updateCount() { document.getElementById('char-counter').innerText = `${document.getElementById('msg-input').value.length}/200`; }
+    function sendMessage() {
+        const input = document.getElementById('msg-input');
+        const text = input.value.trim();
+        if (!text) return;
+        if (isMuted) return appendSystemMessage("ミュート中です。");
+        appendMessage(username, text);
+        input.value = '';
+        updateCount();
+        if (text.startsWith('/')) { handleCommand(text); }
+        else { setTimeout(() => { appendMessage("AIアシスタント", `「${text}」を受け取りました！`); }, 1000); }
+    }
+    function handleCommand(cmdText) {
+        if (cmdText === '/delete') { document.getElementById('chat-box').innerHTML = ''; appendSystemMessage("全削除されました。"); }
+        else if (cmdText.startsWith('/mute')) { isMuted = true; appendSystemMessage("ミュートされました。"); }
+        else if (cmdText.startsWith('/unmute')) { isMuted = false; appendSystemMessage("ミュート解除されました。"); }
+    }
+    function appendMessage(user, text) {
+        const chatBox = document.getElementById('chat-box');
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('message');
+        msgDiv.innerHTML = `<div class="username">${user}</div><div class="text"></div>`;
+        msgDiv.querySelector('.text').innerText = text;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    function appendSystemMessage(text) {
+        const chatBox = document.getElementById('chat-box');
+        const sysDiv = document.createElement('div');
+        sysDiv.classList.add('system-msg');
+        sysDiv.innerText = text;
+        chatBox.appendChild(sysDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+    function logout() { localStorage.removeItem('chat_user'); localStorage.removeItem('chat_role'); window.location.href = './index.html'; }
+    document.getElementById('msg-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+</script>
+</body>
+</html>
