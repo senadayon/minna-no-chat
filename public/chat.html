@@ -49,7 +49,7 @@
 
     <!-- 入力エリア -->
     <div class="input-container">
-        <textarea id="msg-input" maxlength="200" placeholder="メッセージを入力... （コマンドも入力できます）" oninput="updateCount()"></textarea>
+        <textarea id="msg-input" maxlength="200" placeholder="メッセージを入力... " oninput="updateCount()"></textarea>
         <div class="char-count" id="char-counter">0/200</div>
         
         <div class="button-row">
@@ -143,16 +143,13 @@
             return;
         }
 
+        // 自分のメッセージを表示（AIアシスタントの自動返答処理は削除しました）
         appendMessage(username, text);
         input.value = '';
         updateCount();
 
         if (text.startsWith('/')) {
             handleCommand(text);
-        } else {
-            setTimeout(() => {
-                appendMessage("AIアシスタント", `「${text}」を受信しました！（デモ動作中）`);
-            }, 1000);
         }
     }
 
@@ -200,3 +197,5 @@
             <div class="text"></div>
             <div class="time">${timeStr}</div>
         `;
+        msgDiv.querySelector('.text').innerText = text;
+        chatBox.appendChild(msgDiv);
