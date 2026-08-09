@@ -113,9 +113,15 @@
     }
 
     const adminPanel = document.getElementById('admin-panel');
-    // admin、または特権管理者(super_admin)ならフルパネルを表示
-    if (role === 'admin' || role === 'super_admin') {
+    const panelTitle = document.getElementById('panel-title');
+
+    // 権限判定
+    if (role === 'admin') {
         adminPanel.style.display = 'block';
+        panelTitle.innerText = '管理者専用の機能';
+    } else if (role === 'super_admin') {
+        adminPanel.style.display = 'block';
+        panelTitle.innerText = '👑 特権管理者専用の機能';
     }
 
     appendSystemMessage(`${username}さん（権限: ${role}）がチャットに参加しました。`);
@@ -194,9 +200,3 @@
             <div class="text"></div>
             <div class="time">${timeStr}</div>
         `;
-        msgDiv.querySelector('.text').innerText = text;
-        chatBox.appendChild(msgDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function appendSystemMessage(text) {
