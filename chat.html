@@ -7,20 +7,28 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
         body { background-color: #1a1a1a; color: #e0e0e0; display: flex; flex-direction: column; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+        
+        /* メッセージ表示エリア */
         .chat-container { height: 350px; background: #262626; border-radius: 8px; padding: 20px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #333; }
         .message { background: #333; padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid #3498db; position: relative; }
         .message .username { font-weight: bold; color: #3498db; margin-bottom: 5px; font-size: 14px; }
         .message .text { word-break: break-all; white-space: pre-wrap; }
         .message .time { font-size: 11px; color: #888; margin-top: 5px; text-align: right; }
         .system-msg { background: #2d2d2d; padding: 10px; border-radius: 6px; color: #1abc9c; font-size: 13px; margin: 10px 0; border-left: 4px solid #1abc9c; }
+
+        /* 入力エリア */
         .input-container { background: #262626; border-radius: 8px; padding: 15px; border: 1px solid #333; margin-bottom: 20px; }
         textarea { width: 100%; height: 60px; background: #1a1a1a; border: 1px solid #444; border-radius: 6px; color: #fff; padding: 10px; font-size: 14px; resize: none; outline: none; }
         .char-count { text-align: right; font-size: 12px; color: #888; margin-top: 5px; }
+        
+        /* ボタンエリア */
         .button-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
         .left-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
         .btn { padding: 10px 20px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; font-size: 14px; }
         .btn-blue { background-color: #3498db; }
         .btn-red { background-color: #e74c3c; }
+
+        /* コマンドエリア */
         .command-container { background: #262626; border-radius: 8px; padding: 20px; border: 1px solid #333; }
         .command-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; }
         .command-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
@@ -35,66 +43,160 @@
     </style>
 </head>
 <body>
+
+    <!-- メッセージ表示エリア -->
     <div class="chat-container" id="chat-box"></div>
+
+    <!-- 入力エリア -->
     <div class="input-container">
-        <textarea id="msg-input" maxlength="200" placeholder="メッセージを入力..." oninput="updateCount()"></textarea>
+        <textarea id="msg-input" maxlength="200" placeholder="メッセージを入力... （コマンドも入力できます）" oninput="updateCount()"></textarea>
         <div class="char-count" id="char-counter">0/200</div>
+        
         <div class="button-row">
-            <div class="left-buttons"><button class="btn btn-blue" onclick="sendMessage()">送信</button></div>
+            <div class="left-buttons">
+                <button class="btn btn-blue" onclick="sendMessage()">送信</button>
+            </div>
             <button class="btn btn-red" onclick="logout()">ログアウト</button>
         </div>
     </div>
+
+    <!-- コマンドエリア -->
     <div class="command-container" id="admin-panel" style="display: none;">
         <div class="command-title" id="panel-title">管理者専用の機能</div>
         <div class="command-grid">
-            <div class="command-card"><div class="command-name cmd-prm">/プラチャ</div><div class="command-desc">プライベートメッセージを送る</div></div>
-            <div class="command-card"><div class="command-name cmd-admin">/delete <span class="badge badge-admin">管理者専用</span></div><div class="command-desc">全メッセージを削除</div></div>
-            <div class="command-card"><div class="command-name cmd-admin">/mute <span class="badge badge-admin">管理者専用</span></div><div class="command-desc">ユーザーをミュート</div></div>
+            <div class="command-card">
+                <div class="command-name cmd-prm">/prm</div>
+                <div class="command-desc">プライベートメッセージを送る<br><span style="color:#666">例: /prm ユーザー名 内容</span></div>
+            </div>
+            <div class="command-card">
+                <div class="command-name cmd-admin">/delete <span class="badge badge-admin">管理者専用</span></div>
+                <div class="command-desc">全メッセージを削除</div>
+            </div>
+            <div class="command-card">
+                <div class="command-name cmd-admin">/mute <span class="badge badge-admin">管理者専用</span></div>
+                <div class="command-desc">ユーザーを一時的にミュート<br><span style="color:#666">例: /mute ユーザー名 60</span></div>
+            </div>
+            <div class="command-card">
+                <div class="command-name cmd-admin">/unmute <span class="badge badge-admin">管理者専用</span></div>
+                <div class="command-desc">ミュートを解除します<br><span style="color:#666">例: /unmute ユーザー名</span></div>
+            </div>
+            <div class="command-card">
+                <div class="command-name cmd-admin">/ban <span class="badge badge-admin">管理者専用</span></div>
+                <div class="command-desc">ユーザーをチャットから追い出す（垢バン）<br><span style="color:#666">例: /ban ユーザー名</span></div>
+            </div>
+            <div class="command-card">
+                <div class="command-name cmd-admin">/unban <span class="badge badge-admin">管理者専用</span></div>
+                <div class="command-desc">BANを解除します<br><span style="color:#666">例: /unban ユーザー名</span></div>
+            </div>
+            <div class="command-card">
+                <div class="command-name cmd-admin" style="color:#be7ffb">/ipban <span class="badge badge-super">特権管理者専用</span></div>
+                <div class="command-desc">ユーザー名またはIPアドレスでBANする<br><span style="color:#666">例: /ipban ユーザー名</span></div>
+            </div>
+            <div class="command-card">
+                <div class="command-name cmd-admin" style="color:#be7ffb">/ipunban <span class="badge badge-super">特権管理者専用</span></div>
+                <div class="command-desc">IPバンを解除する<br><span style="color:#666">例: /ipunban IPアドレス</span></div>
+            </div>
+            <div class="command-card">
+                <div class="command-name cmd-admin" style="color:#be7ffb">/ipbanlist <span class="badge badge-super">特権管理者専用</span></div>
+                <div class="command-desc">IPバンリストを表示</div>
+            </div>
         </div>
     </div>
+
 <script>
     const username = localStorage.getItem('chat_user') || 'ゲスト';
     const role = localStorage.getItem('chat_role') || 'user';
     let isMuted = false;
-    if (!localStorage.getItem('chat_user')) { window.location.href = './index.html'; }
+
+    if (!localStorage.getItem('chat_user')) {
+        window.location.href = './index.html';
+    }
+
     const adminPanel = document.getElementById('admin-panel');
-    if (role === 'admin' || role === 'super_admin') { adminPanel.style.display = 'block'; }
-    appendSystemMessage(`${username}さん（権限: ${role}）が参加しました。`);
-    function updateCount() { document.getElementById('char-counter').innerText = `${document.getElementById('msg-input').value.length}/200`; }
+    // admin、または特権管理者(super_admin)ならフルパネルを表示
+    if (role === 'admin' || role === 'super_admin') {
+        adminPanel.style.display = 'block';
+    }
+
+    appendSystemMessage(`${username}さん（権限: ${role}）がチャットに参加しました。`);
+
+    function updateCount() {
+        const len = document.getElementById('msg-input').value.length;
+        document.getElementById('char-counter').innerText = `${len}/200`;
+    }
+
     function sendMessage() {
         const input = document.getElementById('msg-input');
         const text = input.value.trim();
         if (!text) return;
-        if (isMuted) return appendSystemMessage("ミュート中です。");
+
+        if (isMuted) {
+            appendSystemMessage("あなたはミュートされているため、発言できません。");
+            input.value = '';
+            updateCount();
+            return;
+        }
+
         appendMessage(username, text);
         input.value = '';
         updateCount();
-        if (text.startsWith('/')) { handleCommand(text); }
+
+        if (text.startsWith('/')) {
+            handleCommand(text);
+        } else {
+            setTimeout(() => {
+                appendMessage("AIアシスタント", `「${text}」を受信しました！（デモ動作中）`);
+            }, 1000);
+        }
     }
+
     function handleCommand(cmdText) {
-        if (cmdText === '/delete') { document.getElementById('chat-box').innerHTML = ''; appendSystemMessage("全削除されました。"); }
-        else if (cmdText.startsWith('/mute')) { isMuted = true; appendSystemMessage("ミュートされました。"); }
-        else if (cmdText.startsWith('/unmute')) { isMuted = false; appendSystemMessage("ミュート解除されました。"); }
+        const parts = cmdText.split(' ');
+        const command = parts[0];
+        const target = parts[1] || "対象ユーザー";
+
+        if (command === '/delete') {
+            document.getElementById('chat-box').innerHTML = '';
+            appendSystemMessage("管理者のコマンドによって、すべてのメッセージが削除されました。");
+        } else if (command === '/mute') {
+            appendSystemMessage(`ユーザー「${target}」がミュートされました。`);
+            if(target === username) isMuted = true;
+        } else if (command === '/unmute') {
+            appendSystemMessage(`ユーザー「${target}」のミュートが解除されました。`);
+            if(target === username) isMuted = false;
+        } else if (command === '/ban') {
+            appendSystemMessage(`ユーザー「${target}」がチャットから永久に追放（垢バン）されました。`);
+        } else if (command === '/unban') {
+            appendSystemMessage(`ユーザー「${target}」の追放（BAN）が解除されました。`);
+        } else if (command === '/ipban') {
+            appendSystemMessage(`ユーザー「${target}」のIPアドレスがブロック（IP BAN）されました。`);
+        } else if (command === '/ipunban') {
+            appendSystemMessage(`IPアドレス「${target}」のブロックが解除されました。`);
+        } else if (command === '/ipbanlist') {
+            appendSystemMessage("--- IP BAN リスト (デモ) ---\n・192.168.0.1\n・悪質ユーザー");
+        } else if (command === '/prm') {
+            const msg = parts.slice(2).join(' ') || "秘密のメッセージ";
+            appendSystemMessage(`[秘密の通信] ${target}へ: ${msg}`);
+        } else {
+            appendSystemMessage(`不明なコマンドです: ${command}`);
+        }
     }
+
     function appendMessage(user, text) {
         const chatBox = document.getElementById('chat-box');
         const msgDiv = document.createElement('div');
         msgDiv.classList.add('message');
-        msgDiv.innerHTML = `<div class="username">${user}</div><div class="text"></div>`;
+        const now = new Date();
+        const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+        msgDiv.innerHTML = `
+            <div class="username">${user}</div>
+            <div class="text"></div>
+            <div class="time">${timeStr}</div>
+        `;
         msgDiv.querySelector('.text').innerText = text;
         chatBox.appendChild(msgDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
+
     function appendSystemMessage(text) {
-        const chatBox = document.getElementById('chat-box');
-        const sysDiv = document.createElement('div');
-        sysDiv.classList.add('system-msg');
-        sysDiv.innerText = text;
-        chatBox.appendChild(sysDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-    function logout() { localStorage.removeItem('chat_user'); localStorage.removeItem('chat_role'); window.location.href = './index.html'; }
-    document.getElementById('msg-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-</script>
-</body>
-</html>
