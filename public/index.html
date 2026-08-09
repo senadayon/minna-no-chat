@@ -38,7 +38,7 @@
     </div>
     <div class="checkbox-group" id="admin-toggle">
         <input type="checkbox" id="is-admin">
-        <label for="is-admin">管理者ログイン</label>
+        <label for="is-admin">管理者としてログイン</label>
     </div>
     <button class="btn" id="submit-btn" onclick="handleSubmit()">ログイン</button>
     <div class="toggle-link" id="toggle-text">
@@ -47,6 +47,11 @@
 </div>
 <script>
     let isRegisterMode = false;
+
+    if (!localStorage.getItem('chat_users_db')) {
+        localStorage.setItem('chat_users_db', JSON.stringify([]));
+    }
+
     function toggleMode(toRegister) {
         isRegisterMode = toRegister;
         const fields = document.getElementById('login-fields');
@@ -65,46 +70,57 @@
             toggleText.innerHTML = 'アカウントがありませんか？ <a href="#" onclick="toggleMode(true)">新規登録</a>';
         }
     }
-    async function handleSubmit() {
-        const username = document.getElementById('username').value;
+
+    function handleSubmit() {
+        const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
         const isAdmin = document.getElementById('is-admin').checked;
         if (!username || !password) return alert('入力欄を埋めてください');
-        
-        let adminPassword = "";
 
-        // 管理者チェックが入っていたらパスワードポップアップを出す
-        if (!isRegisterMode && isAdmin) {
-            adminPassword = prompt("管理者用パスワードを入力してください：");
-            if (!adminPassword) return; // キャンセルされたら中止
-        }
+        const db = JSON.parse(localStorage.getItem('chat_users_db'));
 
-        const url = isRegisterMode ? '/api/register' : '/api/login';
-        
-        // サーバーに送るデータに adminPassword を追加
-        const bodyData = isRegisterMode 
-            ? { username, password } 
-            : { username, password, isAdminRequested: isAdmin, adminPassword };
+        if (isRegisterMode) {
+            const userExists = db.some(user => user.username === username);
+            if (userExists) return alert('このユーザー名は既に使われています');
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyData)
-        });
-        const data = await response.json();
-        if (data.success) {
-            if (isRegisterMode) {
-                alert('登録が完了しました！ログインしてください。');
-                toggleMode(false);
-            } else {
-                // 登録時にスペースでコードを入れた場合の実際の名前を考慮
-                const actualUsername = username.trim().split(' ')[0];
-                localStorage.setItem('chat_user', actualUsername);
-                localStorage.setItem('chat_role', data.role || 'user');
-                window.location.href = '/chat.html';
-            }
+            db.push({ username, password, role: 'user' });
+            localStorage.setItem('chat_users_db', JSON.stringify(db));
+
+            alert('登録が完了しました！ログインしてください。');
+            toggleMode(false);
         } else {
-            alert(data.message || 'エラーが発生しました');
+            let targetRole = 'user';
+
+            if (isAdmin) {
+                const adminPassword = prompt("管理者用パスワードを入力してください：\n（特権管理者パスワードもここに入力できます）");
+                if (!adminPassword) return;
+                
+                // パスワードの判定ロジック
+                if (adminPassword === "Aap@003kok25") {
+                    targetRole = 'super_admin'; // 特権管理者に設定
+                    alert('👑 特権管理者として認証されました！');
+                } else if (adminPassword === "003kok25") {
+                    targetRole = 'admin'; // 通常の管理者に設定
+                    alert('🛡️ 一般管理者として認証されました！');
+                } else {
+                    return alert('パスワードが違います');
+                }
+            }
+
+            const matchedUser = db.find(user => user.username === username && user.password === password);
+            
+            if (matchedUser) {
+                localStorage.setItem('chat_user', username);
+                localStorage.setItem('chat_role', targetRole);
+                
+                alert('ログインに成功しました。チャット画面へ進みます。');
+                
+                const currentPath = window.location.pathname;
+                const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
+                window.location.href = basePath + 'chat.html';
+            } else {
+                alert('ユーザー名またはパスワードが正しくありません。\n初めての方は「新規登録」からアカウントを作成してください。');
+            }
         }
     }
 </script>
