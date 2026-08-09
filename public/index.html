@@ -95,12 +95,11 @@
                 const adminPassword = prompt("管理者用パスワードを入力してください：\n（特権管理者パスワードもここに入力できます）");
                 if (!adminPassword) return;
                 
-                // パスワードの判定ロジック
-                if (adminPassword === "Aap@003kok25") {
-                    targetRole = 'super_admin'; // 特権管理者に設定
+                if (adminPassword === "super777") {
+                    targetRole = 'super_admin';
                     alert('👑 特権管理者として認証されました！');
-                } else if (adminPassword === "003kok25") {
-                    targetRole = 'admin'; // 通常の管理者に設定
+                } else if (adminPassword === "admin123") {
+                    targetRole = 'admin';
                     alert('🛡️ 一般管理者として認証されました！');
                 } else {
                     return alert('パスワードが違います');
@@ -115,9 +114,8 @@
                 
                 alert('ログインに成功しました。チャット画面へ進みます。');
                 
-                const currentPath = window.location.pathname;
-                const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
-                window.location.href = basePath + 'chat.html';
+                // 同じpublicフォルダ内にあるchat.htmlに直接移動させる設定に変更
+                window.location.href = './chat.html';
             } else {
                 alert('ユーザー名またはパスワードが正しくありません。\n初めての方は「新規登録」からアカウントを作成してください。');
             }
