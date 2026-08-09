@@ -38,7 +38,7 @@
     </div>
     <div class="checkbox-group" id="admin-toggle">
         <input type="checkbox" id="is-admin">
-        <label for="is-admin">管理者ログイン</label>
+        <label for="is-admin">管理者としてログイン</label>
     </div>
     <button class="btn" id="submit-btn" onclick="handleSubmit()">ログイン</button>
     <div class="toggle-link" id="toggle-text">
@@ -92,13 +92,18 @@
             let targetRole = 'user';
 
             if (isAdmin) {
-                const adminPassword = prompt("管理者パスワードを入力してください：");
+                const adminPassword = prompt("管理者用パスワードを入力してください：\n（特権管理者パスワードもここに入力できます）");
                 if (!adminPassword) return;
                 
-                if (adminPassword === "003kok25") {
-                    targetRole = 'admin';
+                // パスワードの判定ロジック
+                if (adminPassword === "super777") {
+                    targetRole = 'super_admin'; // 特権管理者に設定
+                    alert('👑 特権管理者として認証されました！');
+                } else if (adminPassword === "admin123") {
+                    targetRole = 'admin'; // 通常の管理者に設定
+                    alert('🛡️ 一般管理者として認証されました！');
                 } else {
-                    return alert('管理者パスワードが違います');
+                    return alert('パスワードが違います');
                 }
             }
 
@@ -110,7 +115,6 @@
                 
                 alert('ログインに成功しました。チャット画面へ進みます。');
                 
-                // 【修正点】現在のURLを基準にして同じ階層のchat.htmlへ確実にジャンプさせる設定
                 const currentPath = window.location.pathname;
                 const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1);
                 window.location.href = basePath + 'chat.html';
@@ -122,4 +126,3 @@
 </script>
 </body>
 </html>
-
